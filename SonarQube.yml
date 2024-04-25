@@ -1,0 +1,49 @@
+trigger:
+  branches:
+    include:
+    - refs/heads/master
+name: $(date:yyyyMMdd)$(rev:.r)
+jobs:
+- job: Phase_1
+  displayName: Phase 1
+  cancelTimeoutInMinutes: 1
+  pool:
+    vmImage: ubuntu-20.04
+  steps:
+  - checkout: self
+  - task: SonarSource.sonarqube.15B84CA1-B62F-4A2A-A403-89B77A063157.SonarQubePrepare@4
+    displayName: Prepare analysis on SonarQube
+    inputs:
+      SonarQube: <Service Connection Resource ID>
+      scannerMode: Other
+      configFile: ''
+      projectKey: <Project Key in Sonarqube>
+      projectName: <Project Name in SOnarQube>
+      extraProperties: "# Additional properties that will be passed to the scanner, \n# Put one key=value per line, example:\n# sonar.exclusions=**/*.bin\nsonar.projectName=MyShuttle\nsonar.projectKey=MyShuttle"
+  - task: Maven@3
+    name: Maven1
+    displayName: Maven
+    inputs:
+      testResultsFiles: '**/TEST-*.xml'
+      testRunTitle: MyShuttle
+      codeCoverageTool: JaCoCo
+      classFilesDirectories: src/main
+      jdkArchitecture: x86
+      mavenFeedAuthenticate: true
+      sqAnalysisEnabled: true
+  - task: SonarSource.sonarqube.291ed61f-1ee4-45d3-b1b0-bf822d9095ef.SonarQubePublish@4
+    displayName: Publish Quality Gate Result
+  - task: CopyFiles@2
+    name: CopyFiles2
+    displayName: Copy Files
+    inputs:
+      SourceFolder: $(build.sourcesdirectory)
+      Contents: '**/*.jar'
+      TargetFolder: $(build.artifactstagingdirectory)
+  - task: PublishBuildArtifacts@1
+    name: PublishBuildArtifacts3
+    displayName: Publish Artifact
+    inputs:
+      PathtoPublish: $(build.artifactstagingdirectory)
+      TargetPath: '\\my\share\$(Build.DefinitionName)\$(Build.BuildNumber)'
+...
